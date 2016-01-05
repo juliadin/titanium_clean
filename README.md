@@ -27,9 +27,9 @@ The target was to create a small enough tool with few external dependencies that
 
 ## Usage
 ```
-# ./titanium_clean.py --help
+# ./titanium_clean.py -h
 usage: titanium_clean.py [-h] --path PATH [--keep-new X] [--keep-old Y]
-                         [--keep-apk] [--delete]
+                         [--keep-apk] [--delete] [--verbose]
 
 titanium_clean ver. 1.0 by Joel Brunenberg <joel@jjim.de> - provided with
 ABSOLUTELY NO WARRANTY under the licence described in the LICENSE file in this
@@ -48,7 +48,9 @@ optional arguments:
   --keep-apk, -a        ignore unused APK backups and keep them in case of
                         delete.
   --delete, -d          delete unwanted files - otherwise only the names are
-                        listed.
+                        listed to stdout.
+  --verbose, -v         Print found apps.
+
 
 ```
 
