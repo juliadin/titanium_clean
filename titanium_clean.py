@@ -1,9 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
+
+# vim: tabstop=4 shiftwidth=4 softtabstop=4 expandtab
 
 import glob
 import re
 import argparse
 import os
+import sys
 
 app_version = "1.0"
 app_name    = "titanium_clean"
@@ -32,7 +35,8 @@ parser.add_argument('--path',     '-p', required=True,                    help='
 parser.add_argument('--keep-new', '-k', default=4, type=int,              help='how many of the newest backups to keep', metavar="X")
 parser.add_argument('--keep-old', '-o', default=0, type=int,              help='how many old backups to keep in any case.', metavar="Y")
 parser.add_argument('--keep-apk', '-a', action="store_const", const=True, help="ignore unused APK backups and keep them in case of delete.")
-parser.add_argument('--delete',   '-d', action="store_const", const=True, help="delete unwanted files - otherwise only the names are listed.")
+parser.add_argument('--delete',   '-d', action="store_const", const=True, help="delete unwanted files - otherwise only the names are listed to stdout.")
+parser.add_argument('--verbose',  '-v', action="store_const", const=True, help="Print found apps.")
 
 args = parser.parse_args()
 
@@ -49,7 +53,12 @@ properties_we_need = [ "app_version_code", "app_apk_md5", "app_gui_label", "app_
 
 regexes = [re_app_file, re_data_file, re_misc_file]
 
-
+def lg(string):
+    """Print string to stderr"""
+    if not args.verbose:
+        return
+    sys.stderr.write(string)
+    sys.stderr.write("\n")
 
 class AppBackup(object):
     """Object to represent a single backup of an applikation package.
@@ -259,6 +268,20 @@ class DataBackup(object):
             return self._apk_hash
 
     @property
+    def gui_label(self):
+        """Property to return GUI Label or None"""
+        if self._properties.has_key("app_gui_label"):
+            return self._properties["app_gui_label"]
+        return None
+
+    @property
+    def version_name(self):
+        """Property to return version name or None"""
+        if self._properties.has_key("app_version_name"):
+            return self._properties["app_version_name"]
+        return None
+
+    @property
     def complete(self):
         """Property to show, if the object has all required information. This
         should return True after a proper file has been added.
@@ -388,6 +411,44 @@ class App(object):
             for fn in self.unused_apks( delete ):
                 print fn
 
+    @property
+    def canonical_names(self):
+        names = []
+        for db in self._data_backups.values():
+            if db.gui_label and not db.gui_label in names:
+                names.append(db.gui_label)
+        if len(names) >= 1:
+            return ", ".join(sorted(names))
+
+    @property
+    def canonical_versions(self):
+        names = []
+        for db in self._data_backups.values():
+            if db.version_name and not db.version_name in names:
+                names.append(db.version_name)
+        if len(names) >= 1:
+            return ", ".join(sorted(names))
+
+    @property
+    def name(self):
+        """Property to return name"""
+        return self._name
+
+    def describe(self, keep=None, keep_old=None):
+        """Description of the object, its backups and properties as a list. Takes keep and keep_old arguments like clean(), but they are optional"""
+        desc = [
+                "App names: {}".format(self.canonical_names),
+                "App versions: {}".format(self.canonical_versions),
+                "App backups: {} data and {} app backups found".format(len(self._data_backups), len(self._app_backups)),
+               ]
+        if keep != None and keep_old != None:
+                old_backups = [ x for x in self.old_backups(keep, keep_old)]
+                plural = ""
+                if len(old_backups) != 1:
+                    plural = "s"
+                desc.append(" {} data backup{} to be removed: {}".format(len(old_backups), plural, ", ".join(old_backups)))
+        return desc
+
     def __str__(self):
         """Represent the application object as a string. This returns a
         multiline string.
@@ -409,4 +470,8 @@ for fn in files:
 
 # Iterate over all found app objects and perform the requested cleaning operation.
 for item in sorted(Apps):
-    Apps[item].clean(keep=args.keep_new, keep_old=args.keep_old, keep_apk=args.keep_apk, delete=args.delete)
+    app = Apps[item]
+    if args.verbose:
+        desc = app.describe(keep=args.keep_new, keep_old=args.keep_old)
+        lg("Working on app {} \n - {}".format(app.name, "\n - ".join(desc)))
+    app.clean(keep=args.keep_new, keep_old=args.keep_old, keep_apk=args.keep_apk, delete=args.delete)
