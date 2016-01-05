@@ -22,25 +22,34 @@ The target was to create a small enough tool with few external dependencies that
  - keep a certain number of recent data backups for that app
  - keep a certain number of oldest data backups for that app
  - keep all apk backups that are required by the data backups
+ - optionally keep all apks regardless
  - clean up the rest
 
 ## Usage
 ```
+# ./titanium_clean.py --help
 usage: titanium_clean.py [-h] --path PATH [--keep-new X] [--keep-old Y]
-                         [--delete]
+                         [--keep-apk] [--delete]
 
-A cleaner for Titanium Backup directories to keep the last X and Y oldest
-backups of app data and their apps.
+titanium_clean ver. 1.0 by Joel Brunenberg <joel@jjim.de> - provided with
+ABSOLUTELY NO WARRANTY under the licence described in the LICENSE file in this
+folder. - A cleaner for Titanium Backup directories to keep the last X and Y
+oldest backups of app data and their apps.
 
 optional arguments:
   -h, --help            show this help message and exit
   --path PATH, -p PATH  Path where the titanium backups are. This is globbed
                         with * so filename prefixes are also possible to only
-                        work on a specific glob pattern.
+                        work on a specific glob pattern. Existance is not
+                        checked. Be careful. If you want to specify a
+                        directory, a trailing slash is mandantory.
   --keep-new X, -k X    how many of the newest backups to keep
   --keep-old Y, -o Y    how many old backups to keep in any case.
+  --keep-apk, -a        ignore unused APK backups and keep them in case of
+                        delete.
   --delete, -d          delete unwanted files - otherwise only the names are
                         listed.
+
 ```
 
 ## Warranties
