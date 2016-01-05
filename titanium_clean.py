@@ -5,10 +5,33 @@ import re
 import argparse
 import os
 
-parser = argparse.ArgumentParser(description="A cleaner for Titanium Backup directories to keep the last X and Y oldest backups of app data and their apps.")
-parser.add_argument('--path',     '-p', required=True,                    help='Path where the titanium backups are. This is globbed with * so filename prefixes are also possible to only work on a specific glob pattern.')
+app_version = "1.0"
+app_name    = "titanium_clean"
+app_author  = "Joel Brunenberg <joel@jjim.de>"
+app_string  = "{} ver. {} by {} - provided with ABSOLUTELY NO WARRANTY under the licence described in the LICENSE file in this folder.".format(app_name, app_version, app_author)
+
+#    titanium_clean - Titanium Backup Cleaner
+#    Copyright (C) 2015  Joel Brunenberg
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; if not, write to the Free Software Foundation, Inc.,
+#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+parser = argparse.ArgumentParser(description="{} - A cleaner for Titanium Backup directories to keep the last X and Y oldest backups of app data and their apps.".format(app_string))
+parser.add_argument('--path',     '-p', required=True,                    help='Path where the titanium backups are. This is globbed with * so filename prefixes are also possible to only work on a specific glob pattern. Existance is not checked. Be careful. If you want to specify a directory, a trailing slash is mandantory.')
 parser.add_argument('--keep-new', '-k', default=4, type=int,              help='how many of the newest backups to keep', metavar="X")
 parser.add_argument('--keep-old', '-o', default=0, type=int,              help='how many old backups to keep in any case.', metavar="Y")
+parser.add_argument('--keep-apk', '-a', action="store_const", const=True, help="ignore unused APK backups and keep them in case of delete.")
 parser.add_argument('--delete',   '-d', action="store_const", const=True, help="delete unwanted files - otherwise only the names are listed.")
 
 args = parser.parse_args()
@@ -323,14 +346,15 @@ class App(object):
         how many new backups to keep, int keep_old to specify how many of the
         oldest backups to keep and optional bool delete (defaults to False).
         If delete is set, files are unlinked immediately after yielding their
-        filename.
+        filename. Backups are only removed if they are marked as complete.
         """
         for timestamp in self.old_backups(keep, keep_old):
-            for filename in self._data_backups[timestamp].files:
-                yield filename
-                if delete:
-                    os.remove(filename)
-            del self._data_backups[timestamp]
+            if self._data_backups[timestamp].complete:
+                for filename in self._data_backups[timestamp].files:
+                    yield filename
+                    if delete:
+                        os.remove(filename)
+                del self._data_backups[timestamp]
 
     def unused_apks(self, delete=False):
         """Generator to yield all affected filenames of application package
@@ -347,7 +371,7 @@ class App(object):
                     os.remove(backup.files)
                 del self._app_backups[hash]
 
-    def clean(self, keep, keep_old, delete=False):
+    def clean(self, keep, keep_old, keep_apk, delete=False):
         """Method to list all the filenames of any backups in this app that are
         exceeding the specified keep count or not required anymore (in the case
         of application backups). Takes an int argument keep that specifies how
@@ -356,12 +380,13 @@ class App(object):
         False and specifies if the files should be deleted. Filenames are
         printed regardless of deletion. After deleting data backups that are
         exceeding the keep count, all application backups that remain unused
-        then are listed (and removed in case of delete).
+        then are listed (and removed in case of delete) unless keep_apk is set.
         """
         for fn in self.clean_old_backups( keep, keep_old, delete ):
             print fn
-        for fn in self.unused_apks( delete ):
-            print fn
+        if not keep_apk:
+            for fn in self.unused_apks( delete ):
+                print fn
 
     def __str__(self):
         """Represent the application object as a string. This returns a
@@ -384,4 +409,4 @@ for fn in files:
 
 # Iterate over all found app objects and perform the requested cleaning operation.
 for item in sorted(Apps):
-    Apps[item].clean(keep=args.keep_new, keep_old=args.keep_old, delete=args.delete)
+    Apps[item].clean(keep=args.keep_new, keep_old=args.keep_old, keep_apk=args.keep_apk, delete=args.delete)
