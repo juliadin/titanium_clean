@@ -22,6 +22,7 @@ The target was to create a small enough tool with few external dependencies that
  - keep a certain number of recent data backups for that app
  - keep a certain number of oldest data backups for that app
  - keep all apk backups that are required by the data backups
+ - optionally keep all apks regardless
  - clean up the rest
 
 ## Usage
